@@ -5,3 +5,4 @@ __pycache__/
 *.log
 models/*.pkl
 .ipynb_checkpoints/
+.idea/

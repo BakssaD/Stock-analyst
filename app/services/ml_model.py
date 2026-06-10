@@ -1,6 +1,10 @@
 import yfinance as yf
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+
+FEATURES = ['Return', 'MA5', 'price_v_ma5', 'Volatility', 'Vol_Change', 'Ret_5d']
 
 def prep_data(ticker:str):
     stock = yf.Ticker(ticker)
@@ -13,22 +17,24 @@ def prep_data(ticker:str):
     df['Vol_Change'] = df['Volume'].pct_change()
     df['Ret_5d'] = close.pct_change(5)
 
-    df['Target'] = (df['Return'].shift(-1) > 0).astype(int)
+    next_ret=df['Return'].shift(-1)
+    df['Target']=(next_ret>0).astype('Int64')
+    df.loc[next_ret.isna(),'Target']=pd.NA
 
-    df = df.dropna()
+    df = df.dropna(subset=FEATURES)
 
-    return df
+    train_df=df[df['Target'].notna()]
+    latest=df[FEATURES].iloc[[-1]]
+
+
+    return train_df,latest
 
 def train_model(df: pd.DataFrame):
+    X = df[FEATURES]
+    y = df['Target'].astype(int)
 
-    X = df[['Return','MA5','price_v_ma5','Volatility','Vol_Change','Ret_5d']]
-    y = df['Target']
-
-    model = LogisticRegression()
+    model = make_pipeline(StandardScaler(),LogisticRegression())
     model.fit(X,y)
 
     return model
-
-def get_features(df: pd.DataFrame):
-    return df[['Return','MA5','price_v_ma5','Volatility','Vol_Change','Ret_5d']].iloc[-1]
 
