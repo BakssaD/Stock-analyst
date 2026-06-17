@@ -13,7 +13,7 @@ def prep_data(ticker:str):
     df['Return'] = close.pct_change()
     df['MA5'] = close.rolling(5).mean()
     df['price_v_ma5'] = close / df['MA5']
-    df['Volatility'] = close.rolling(5).std()
+    df['Volatility'] = df['Return'].rolling(5).std()
     df['Vol_Change'] = df['Volume'].pct_change()
     df['Ret_5d'] = close.pct_change(5)
 
