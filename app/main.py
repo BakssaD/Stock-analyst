@@ -4,13 +4,15 @@ load_dotenv()
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from app.services.ml_model import train_model, prep_data
+from app.services.ml_model import train_model, prep_data, explain_pred, evaluate_model
 from app.services.news import get_headlines,summarize_news
 
 class StockPrediction(BaseModel):
     ticker: str
     trend: str
     confidence: float
+    model_accuracy: float
+    baseline_accuracy: float
     reasoning: str
     news_summary:str
 
@@ -28,6 +30,7 @@ def get_stock(ticker : str)->StockPrediction:
         raise HTTPException(status_code=404, detail=f"No data found for ticker '{ticker}'")
 
     model=train_model(train_df)
+    model_accuracy,baseline = evaluate_model(train_df)
     prob=model.predict_proba(latest)[0]
 
     class_probs = dict(zip(model.classes_,prob))
@@ -38,28 +41,12 @@ def get_stock(ticker : str)->StockPrediction:
     trend= "Bullish" if prediction == 1 else "Bearish"
     confidence = round(max(prob_up,prob_down)*100,2)
 
-    row=latest.iloc[0]
-    reasoning=[]
-
-    if row['price_v_ma5'] > 1:
-        reasoning.append("price above 5-day moving average")
-    else:
-        reasoning.append("price below 5-day moving average")
-    if row['Ret_5d'] > 0:
-        reasoning.append("positive 5-day momentum")
-    else:
-        reasoning.append("negative 5-day momentum")
-    if row['Volatility'] > 0.02:
-        reasoning.append("high volatility")
-    else:
-        reasoning.append("low volatility")
-    reasoning = "; ".join(reasoning)
+    reasoning=explain_pred(model,latest)
 
     try:
         headlines = get_headlines(ticker)
         news_summary = summarize_news(ticker,headlines)
-    except Exception as e:
-        print(f"NEWS ERROR: {type(e).__name__}: {e}")
+    except Exception:
         news_summary = "News summary unavailable."
 
-    return StockPrediction(ticker = ticker.upper(),trend = trend,confidence = confidence,reasoning = reasoning,news_summary = news_summary)
+    return StockPrediction(ticker = ticker.upper(),trend = trend,confidence = confidence,model_accuracy = model_accuracy, baseline_accuracy = baseline,reasoning = reasoning,news_summary = news_summary)
