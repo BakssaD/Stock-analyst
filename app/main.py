@@ -1,7 +1,10 @@
 from dotenv import load_dotenv
+
+from app.services.chart import make_price_chart
+
 load_dotenv()
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException,Response
 from pydantic import BaseModel
 
 from app.services.ml_model import train_model, prep_data, explain_pred, evaluate_model
@@ -30,6 +33,13 @@ app=FastAPI()
 @app.get("/")
 def root():
     return{"message": "Stock analyst is running"}
+
+@app.get("/stock/{ticker}/chart")
+def stock_chart(ticker):
+    buf=make_price_chart(ticker)
+    if buf is None:
+        raise HTTPException(status_code=404, detail=f"No data for '{ticker}'")
+    return Response(content=buf.getvalue(),media_type="image/png")
 
 @app.get("/stock/{ticker}")
 def get_stock(ticker : str)->StockPrediction:
