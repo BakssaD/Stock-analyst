@@ -5,7 +5,14 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from app.services.ml_model import train_model, prep_data, explain_pred, evaluate_model
-from app.services.news import get_headlines,summarize_news
+from app.services.news import get_headlines, summarize_news, generate_insight
+
+class MarketData(BaseModel):
+    price: float
+    ma5: float
+    volatility: float
+    price_vs_ma5: float
+    return_5d: float
 
 class StockPrediction(BaseModel):
     ticker: str
@@ -13,8 +20,10 @@ class StockPrediction(BaseModel):
     confidence: float
     model_accuracy: float
     baseline_accuracy: float
+    market_data: MarketData
     reasoning: str
     news_summary:str
+    final_insight: str
 
 app=FastAPI()
 
@@ -24,7 +33,7 @@ def root():
 
 @app.get("/stock/{ticker}")
 def get_stock(ticker : str)->StockPrediction:
-    train_df,latest=prep_data(ticker)
+    train_df,latest, market_data=prep_data(ticker)
 
     if train_df.empty:
         raise HTTPException(status_code=404, detail=f"No data found for ticker '{ticker}'")
@@ -48,5 +57,8 @@ def get_stock(ticker : str)->StockPrediction:
         news_summary = summarize_news(ticker,headlines)
     except Exception:
         news_summary = "News summary unavailable."
-
-    return StockPrediction(ticker = ticker.upper(),trend = trend,confidence = confidence,model_accuracy = model_accuracy, baseline_accuracy = baseline,reasoning = reasoning,news_summary = news_summary)
+    try:
+        final_insight = generate_insight(ticker, trend, confidence, model_accuracy,baseline, reasoning, news_summary)
+    except Exception:
+        final_insight = "Insight unavailable."
+    return StockPrediction(ticker = ticker.upper(),trend = trend,confidence = confidence,model_accuracy = model_accuracy, baseline_accuracy = baseline,market_data=market_data ,reasoning = reasoning,news_summary = news_summary , final_insight= final_insight)

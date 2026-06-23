@@ -31,3 +31,21 @@ def summarize_news(ticker: str, headlines: list[str])->str:
     )
 
     return response.choices[0].message.content.strip()
+
+def generate_insight(ticker, trend, confidence, model_accuracy,baseline_accuracy, reasoning, news_summary):
+    edge = model_accuracy - baseline_accuracy
+    prompt = ( f"You are a cautious stock analyst assistant. Write ONE concise paragraph "
+        f"(3-4 sentences) giving an overall outlook for {ticker}. Synthesize the "
+        f"technical signal and the news. Be balanced, acknowledge uncertainty, and "
+        f"do NOT give buy/sell financial advice.\n\n"
+        f"ML signal: {trend} (model confidence {confidence}%)\n"
+        f"Model accuracy: {model_accuracy}% vs naive baseline {baseline_accuracy}% "
+        f"(edge of only {edge:.2f} points, so the model has little real predictive power)\n"
+        f"Key technical factors: {reasoning}\n"
+        f"Recent news: {news_summary}\n")
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role":"user","content":prompt}]
+    )
+    return response.choices[0].message.content.strip()

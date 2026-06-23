@@ -38,8 +38,16 @@ def prep_data(ticker:str):
     train_df=df[df['Target'].notna()]
     latest=df[FEATURES].iloc[[-1]]
 
+    last_row = df.iloc[-1]
+    market_data = {
+        "price": round(float(last_row['Close']), 2),
+        "ma5": round(float(last_row['MA5']), 2),
+        "volatility": round(float(last_row['Volatility']), 4),
+        "price_vs_ma5": round(float(last_row['price_v_ma5']), 4),
+        "return_5d": round(float(last_row['Ret_5d']), 4),
+    }
 
-    return train_df,latest
+    return train_df, latest, market_data
 
 def train_model(df: pd.DataFrame):
     X = df[FEATURES]
